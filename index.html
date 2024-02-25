@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>초등학교 시간표</title>
+<style>
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: #f9f9f9;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#title {
+  font-size: 24px;
+  margin: 20px 0;
+  font-weight: bold;
+}
+
+#instructions {
+  width: 45%;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+#container {
+  display: flex;
+  width: 100%;
+  max-width: 1200px; /* Increased container width */
+  margin-top: 20px;
+}
+
+#subjectForm {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+#subjectForm input, #subjectForm div, #subjectForm button {
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+#subjectForm button {
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  border-color: #007bff;
+}
+
+#subjectForm button:hover {
+  background-color: #0056b3;
+}
+
+#timetable, #subjectsContainer {
+  border: 2px solid #ddd;
+  padding: 10px;
+  border-radius: 8px;
+  margin-right: 20px;
+}
+
+#timetable {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr); /* Adjust for days + time labels */
+  gap: 10px;
+  flex-grow: 2;
+}
+
+#subjectsContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 10px;
+  flex-grow: 1;
+  min-width: 300px; /* Increased width for subject blocks */
+}
+
+.cell, .timeLabel, .dayLabel {
+  border: 2px solid #ddd;
+  background-color: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 10px;
+}
+
+.timeLabel, .dayLabel {
+  font-weight: bold;
+}
+
+.subjectBlock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px; /* Adjusted padding */
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  cursor: grab;
+  margin-bottom: 10px;
+}
+
+.subjectBlock .subjectName, .subjectBlock .teacherName {
+  text-align: center;
+}
+
+.subjectName {
+  font-size: 18px; /* Increased font size */
+  font-weight: bold;
+}
+
+.teacherName {
+  font-size: 14px; /* Increased font size */
+}
+
+.colorSwatch {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-right: 5px;
+  border: 1px solid #ddd;
+}
+
+.colorSwatch.selected {
+  border: 2px solid #000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #container {
+    flex-direction: column;
+  }
+
+  #timetable, #subjectsContainer {
+    margin-right: 0;
+    margin-bottom: 20px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="title">시간표 생성기</div>
+  <div id="instructions">1. 과목 정보 입력, 색상 선택</br>
+  2. '과목 생성'여러 번 클릭하여 과목블럭을 반복 생성 가능</br>
+  3. 생성된 블럭을 시간표에 옮겨서 배치</br>
+  4. 더블클릭하면 과목블럭 삭제</div>
+  
+<div id="subjectForm">
+  <input type="text" id="subjectName" placeholder="과목 이름">
+  <input type="text" id="teacherName" placeholder="교사 이름">
+  <div id="colorPalette" style="display: flex;"></div>
+  <button onclick="createSubject()">과목 생성</button>
+</div>
+
+<div id="container">
+  <div id="timetable"></div>
+  <div id="subjectsContainer"></div>
+</div>
+
+<script>
+// Define pastel colors
+const pastelColors = [
+  '#F3C5C5', '#C5E3F3', '#C5F3C9', '#F3C5F0', '#F0F3C5',
+  '#F3D6C5', '#C5F3ED', '#D9C5F3', '#F3C5C5', '#C5F3C5',
+  '#A4F0B7', '#A4D7F0', '#A4A4F0', '#D3A4F0', '#F0A4D3'
+];
+
+let selectedColor = pastelColors[0]; // Default selected color
+
+const colorPalette = document.getElementById('colorPalette');
+pastelColors.forEach(color => {
+  const colorSwatch = document.createElement('div');
+  colorSwatch.className = 'colorSwatch';
+  colorSwatch.style.backgroundColor = color;
+  colorSwatch.onclick = function() {
+    selectedColor = color;
+    document.querySelectorAll('.colorSwatch').forEach(swatch => swatch.classList.remove('selected'));
+    colorSwatch.classList.add('selected');
+  };
+  if (color === selectedColor) {
+    colorSwatch.classList.add('selected');
+  }
+  colorPalette.appendChild(colorSwatch);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  createTimetable();
+});
+
+function createTimetable() {
+  const timetable = document.getElementById('timetable');
+  const days = ['', '월', '화', '수', '목', '금'];
+  const times = ['아침활동(08:40~09:00)', '1교시(09:00~09:40)', '2교시(09:40~10:30)', '3교시(10:40~11:20)', '4교시(11:30~12:10)', '점심시간(12:10~13:00)', '5교시(13:00~13:40)', '6교시(13:50~14:30)'];
+
+  days.forEach(day => {
+    const dayLabel = document.createElement('div');
+    dayLabel.textContent = day;
+    dayLabel.classList.add(day ? 'dayLabel' : 'timeLabel');
+    timetable.appendChild(dayLabel);
+  });
+
+  times.forEach(time => {
+    const timeLabel = document.createElement('div');
+    timeLabel.textContent = time;
+    timeLabel.classList.add('timeLabel');
+    timetable.appendChild(timeLabel);
+
+    days.slice(1).forEach(day => {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.setAttribute('data-time', time);
+      cell.setAttribute('data-day', day);
+      cell.addEventListener('dragover', e => e.preventDefault());
+      cell.addEventListener('drop', handleDrop);
+      timetable.appendChild(cell);
+    });
+  });
+}
+
+function createSubject() {
+  const name = document.getElementById('subjectName').value;
+  const teacher = document.getElementById('teacherName').value;
+  if (!name || !teacher) return;
+
+  const subjectBlock = document.createElement('div');
+  subjectBlock.classList.add('subjectBlock');
+  subjectBlock.style.backgroundColor = selectedColor;
+  subjectBlock.setAttribute('draggable', 'true');
+  subjectBlock.setAttribute('id', 'subject-' + Date.now());
+  
+  const subjectName = document.createElement('div');
+  subjectName.classList.add('subjectName');
+  subjectName.textContent = name;
+  subjectBlock.appendChild(subjectName);
+  
+  const teacherName = document.createElement('div');
+  teacherName.classList.add('teacherName');
+  teacherName.textContent = teacher;
+  subjectBlock.appendChild(teacherName);
+
+  subjectBlock.addEventListener('dragstart', function(e) {
+    e.dataTransfer.setData('text/plain', subjectBlock.id);
+  });
+
+  subjectBlock.addEventListener('dblclick', function() {
+    subjectBlock.remove();
+  });
+
+  document.getElementById('subjectsContainer').appendChild(subjectBlock);
+}
+
+function handleDrop(e) {
+  const id = e.dataTransfer.getData('text/plain');
+  const subjectBlock = document.getElementById(id);
+  if (subjectBlock && this.children.length === 0) {
+    this.appendChild(subjectBlock);
+  }
+}
+</script>
+</body>
+</html>
